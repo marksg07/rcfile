@@ -1,0 +1,1216 @@
+# csdc
+
+##### Crawl Init file ###############################################
+# For descriptions of all options, as well as some more in-depth information
+# on setting them, consult the file
+#    options_guide.txt
+# in your /docs directory. If you can't find it, the file is also available
+# online at:
+# https://github.com/crawl/crawl/blob/master/crawl-ref/docs/options_guide.txt
+#
+# Crawl uses the first file of the following list as its option file:
+#  * init.txt in the -rcdir directory (if specified)
+#  * .crawlrc in the -rcdir directory (if specified)
+#  * init.txt (in the Crawl directory)
+#  * ~/.crawl/init.txt (Unix only)
+#  * ~/.crawlrc (Unix only)
+#  * ~/init.txt (Unix only)
+#  * settings/init.txt (in the Crawl directory)
+
+##### Some basic explanation of option syntax #######################
+# Lines beginning with '#' are comments. The basic syntax is:
+#
+# field = value         or      field.subfield = value
+#
+# Only one specification is allowed per line.
+#
+# The terms are typically case-insensitive except in the fairly obvious
+# cases (the character's name and specifying files or directories when
+# on a system that has case-sensitive filenames).
+#
+# White space is stripped from the beginning and end of the line, as
+# well as immediately before and after the '='. If the option allows
+# multiple comma/semicolon-separated terms (such as
+# autopickup_exceptions), all whitespace around the separator is also
+# trimmed. All other whitespace is left intact.
+#
+# There are three broad types of Crawl options: true/false values (booleans),
+# arbitrary values, and lists of values. The first two types use only the
+# simple =, with later options - which includes your options that are different
+# from the defaults - overriding earlier ones. List options allow using +=, ^=,
+# -=, and = to append, prepend, remove, and reset, respectively. Usually you will
+# want to use += to add to a list option. Lastly, there is := which you can use
+# to create an alias, like so:
+#   ae := autopickup_exceptions
+# From there on, 'ae' will be treated as if it you typed autopickup_exceptions,
+# so you can save time typing it.
+#
+
+##### Other files ###################################################
+# You can include other files from your options file using the 'include'
+# option. Crawl will treat it as if you copied the whole text of that file
+# into your options file in that spot. You can uncomment some of the following
+# lines by removing the beginning '#' to include some of the other files in
+# this folder.
+
+# Some useful, more advanced options, implemented in LUA.
+# include = advanced_optioneering.txt
+
+# Alternative vi bindings for Dvorak users.
+# include = dvorak_command_keys.txt
+
+# Alternative vi bindings for Colemak users.
+# include = colemak_command_keys.txt
+
+# Override the vi movement keys with a non-command.
+# include = no_vi_command_keys.txt
+
+# Turn the shift-vi keys into safe move, instead of run.
+# include = safe_move_shift.txt
+
+##### Ancient versions ##############################################
+# If you're used to the interface of ancient versions of Crawl, you may
+# get back parts of it by uncommenting the following options:
+
+# include                 = 034_command_keys.txt
+
+# And to revert monster glyph and colouring changes:
+
+# include                 = 052_monster_glyphs.txt
+# include                 = 060_monster_glyphs.txt
+# include                 = 071_monster_glyphs.txt
+# include                 = 080_monster_glyphs.txt
+# include                 = 0.9_monster_glyphs.txt
+# include                 = 0.12_monster_glyphs.txt
+# include                 = 0.13_monster_glyphs.txt
+# include                 = 0.14_monster_glyphs.txt
+
+#########################
+# Good Beginner Options #
+#########################
+
+default_manual_training = true
+autofight_stop = 50
+auto_butcher = true
+auto_eat_chunks = true
+show_more = false
+
+{
+-----------------------------
+---- Begin char_defaults ----
+-----------------------------
+
+-- See README.md for documentation.
+
+weapon_skills = {"Unarmed Combat", "Short Blades", "Long Blades", "Axes",
+                 "Maces & Flails", "Polearms", "Staves"}
+ranged_skills = {"Throwing", "Bows", "Crossbows", "Slings"}
+other_skills = {"Fighting", "Armour", "Dodging",
+                "Shields", "Spellcasting", "Conjurations", "Hexes", "Charms",
+                "Summonings", "Necromancy", "Translocations", "Transmutations",
+                "Fire Magic", "Ice Magic", "Air Magic", "Earth Magic",
+                "Poison Magic", "Invocations", "Evocations","Stealth"}
+skill_glyphs = { [1] = "+", [2] = "*" }
+chdat = nil
+char_combo = you.race() .. you.class()
+loaded_attempted = false
+
+-- Wrapper of crawl.mpr() that prints text in white by default.
+if not mpr then
+  mpr = function (msg, color)
+    if not color then
+      color = "white"
+    end
+    crawl.mpr("<" .. color .. ">" .. msg .. "</" .. color .. ">")
+  end
+end
+
+function skill_message(prefix, skill, skill_type, value)
+  local msg = ""
+  if prefix then
+    msg = prefix .. ";"
+  end
+  if skill_type then
+    msg = msg .. skill_type .. "(" .. skill .. "):" .. value
+  else
+    msg = msg .. skill .. ":" .. value
+  end
+  return msg
+end
+
+function save_char_defaults(quiet)
+  if you.class() == "Wanderer" then
+    return
+  end
+  if not c_persist.char_defaults then
+    c_persist.char_defaults = { }
+  end
+  c_persist.char_defaults[char_combo] = { }
+  chdat = c_persist.char_defaults[char_combo]
+  local msg = nil
+  local have_weapon = false
+  for _,sk in ipairs(weapon_skills) do
+    if you.train_skill(sk) > 0 then
+      chdat["Weapon"] = you.train_skill(sk)
+      msg = skill_message(nil, sk, "Weapon",
+                          skill_glyphs[chdat["Weapon"]])
+      have_weapon = true
+      break
+    end
+  end
+  if not have_weapon then
+    chdat["Weapon"] = nil
+  end
+  local have_ranged = false
+  for _,sk in ipairs(ranged_skills) do
+    if you.train_skill(sk) > 0 then
+      chdat["Ranged"] = you.train_skill(sk)
+      msg = skill_message(msg, sk, "Ranged",
+                          skill_glyphs[chdat["Ranged"]])
+      have_ranged = true
+      break
+    end
+  end
+  if not have_ranged then
+    chdat["Ranged"] = nil
+  end
+  for _,sk in ipairs(other_skills) do
+    if you.train_skill(sk) > 0 then
+      chdat[sk] = you.train_skill(sk)
+      msg = skill_message(msg, sk, nil, skill_glyphs[chdat[sk]])
+    else
+      chdat[sk] = nil
+    end
+  end
+  if not quiet then
+    mpr("Saved default for " .. char_combo .. ": " .. msg)
+  end
+end
+
+function have_defaults()
+  return  you.class() ~= "Wanderer"
+    and c_persist.char_defaults ~= nil
+    and c_persist.char_defaults[char_combo] ~= nil
+end
+
+function load_char_defaults(quiet)
+  if not have_defaults() then
+    return
+  end
+  local msg = nil
+  local found_weapon = false
+  chdat = c_persist.char_defaults[char_combo]
+  for _,sk in ipairs(weapon_skills) do
+    if you.base_skill(sk) > 0 and chdat["Weapon"] then
+      you.train_skill(sk, chdat["Weapon"])
+      msg = skill_message(msg, sk, "Weapon",
+                          skill_glyphs[chdat["Weapon"]])
+      found_weapon = true
+    else
+      you.train_skill(sk, 0)
+    end
+  end
+  if chdat["Weapon"] and not found_weapon then
+    you.train_skill("Unarmed Combat", chdat["Weapon"])
+    msg = skill_message(msg, "Unarmed Combat", "Weapon",
+                        skill_glyphs[chdat["Weapon"]])
+  end
+  local found_ranged = false
+  for _,sk in ipairs(ranged_skills) do
+    if you.base_skill(sk) > 0 and chdat["Ranged"] then
+      you.train_skill(sk, chdat["Ranged"])
+      msg = skill_message(msg, sk, "Ranged",
+                          skill_glyphs[chdat["Ranged"]])
+      found_ranged = true
+    else
+      you.train_skill(sk, 0)
+    end
+  end
+  if chdat["Ranged"] and not found_ranged then
+    you.train_skill("Throwing", chdat["Ranged"])
+    msg = skill_message(msg, "Throwing", "Ranged",
+                        skill_glyphs[chdat["Ranged"]])
+  end
+  for _,sk in ipairs(other_skills) do
+    if chdat[sk] then
+      you.train_skill(sk, chdat[sk])
+      msg = skill_message(msg, sk, nil, skill_glyphs[chdat[sk]])
+    else
+      you.train_skill(sk, 0)
+    end
+  end
+  if not quiet and msg ~= "" then
+    mpr("Loaded default for " .. char_combo .. ": " .. msg)
+  end
+end
+
+function char_defaults(quiet)
+  if you.turns() ~= 0 then
+    return
+  end
+
+  if not load_attempted then
+    load_char_defaults(quiet)
+    load_attempted = true
+
+    -- Open the skill menu if we don't have settings to load.
+    if not have_defaults() then
+      crawl.sendkeys("m")
+    end
+  end
+end
+
+---------------------------
+---- End char_defaults ----
+---------------------------
+}
+
+{
+---------------------------
+---- Begin force_mores ----
+---------------------------
+
+-- See README.md for documentation.
+
+last_turn = you.turns()
+
+-- Each entry must have a name field with a descriptive name, a pattern field
+-- giving the regexp matching the appropriate monster(s), a cond field giving
+-- the condition type, and a cutoff field giving the max value where the
+-- force-more is active. Possible values for cond are xl and maxhp. Note that
+-- the final force_more pattern will be "(PATTERN).*into view" where PATTERN is
+-- the value from the pattern field if that is a string, or if pattern is an
+-- array, a string made from joining the entries in pattern with '|'.
+
+fm_patterns = {
+  -- Fast, early game Dungeon problems for chars with low mhp.
+  {name = "30mhp", cond = "maxhp", cutoff = 30,
+   pattern = "adder|hound"},
+  -- Dungeon monsters that can damage you for close to 50% of your mhp with a
+  -- ranged attack.
+  {name = "40mhp", cond = "maxhp", cutoff = 40,
+   pattern = "orc priest|electric eel"},
+  {name = "60mhp", cond = "maxhp", cutoff = 60,
+   pattern = "acid dragon|steam dragon|manticore"},
+  {name = "70mhp", cond = "maxhp", cutoff = 70,
+   pattern = "centaur|meliai|yaktaur"},
+  {name = "80mhp", cond = "maxhp", cutoff = 80,
+   pattern = "gargoyle|orc (warlord|knight)"},
+  {name = "90mhp", cond = "maxhp", cutoff = 90,
+   pattern = "centaur warrior|efreet|molten gargoyle|tengu conjurer"},
+  {name = "110mhp", cond = "maxhp", cutoff = 110,
+   pattern = {"centaur warrior", "deep elf", "cyclops", "efreet",
+              "molten gargoyle", "tengu conjurer", "yaktaur captain",
+              "necromancer", "deep troll earth mage", "hell knight",
+              "stone giant"} },
+  {name = "160mhp", cond = "maxhp", cutoff = 160,
+   pattern = {"(fire|ice|quicksilver|shadow|storm) dragon",
+              "(fire|frost) giant", "war gargoyle"} },
+} -- end fm_patterns
+
+active_fm = {}
+-- Set to true to get a message when the fm change
+notify_fm = false
+
+-- Wrapper of crawl.mpr() that prints text in white by default.
+if not mpr then
+  mpr = function (msg, color)
+    if not color then
+      color = "white"
+    end
+    crawl.mpr("<" .. color .. ">" .. msg .. "</" .. color .. ">")
+  end
+end
+
+function init_force_mores()
+  for i,v in ipairs(fm_patterns) do
+    active_fm[#active_fm + 1] = false
+  end
+end
+
+function update_force_mores()
+  local activated = {}
+  local deactivated = {}
+  local hp, maxhp = you.hp()
+  for i,v in ipairs(fm_patterns) do
+    local msg = nil
+    if type(v.pattern) == "table" then
+      for j, p in ipairs(v.pattern) do
+        if msg == nil then
+          msg = p
+        else
+          msg = msg .. "|" .. p
+        end
+      end
+    else
+      msg = v.pattern
+    end
+    msg = "(" .. msg .. ").*into view"
+    local action = nil
+    local fm_name = v.pattern
+    if v.name then
+      fm_name = v.name
+    end
+    if not v.cond and not active_fm[i] then
+      action = "+"
+    elseif v.cond == "xl" then
+      if active_fm[i] and you.xl() >= v.cutoff then
+        action = "-"
+      elseif not active_fm[i] and you.xl() < v.cutoff then
+        action = "+"
+      end
+    elseif v.cond == "maxhp" then
+      if active_fm[i] and maxhp >= v.cutoff then
+        action = "-"
+      elseif not active_fm[i] and maxhp < v.cutoff then
+        action = "+"
+      end
+    end
+    if action == "+" then
+      activated[#activated + 1] = fm_name
+    elseif action == "-" then
+      deactivated[#deactivated + 1] = fm_name
+    end
+    if action ~= nil then
+      local opt = "force_more_message " .. action .. "= " .. msg
+      crawl.setopt(opt)
+      active_fm[i] = not active_fm[i]
+    end
+  end
+  if #activated > 0 and notify_fm then
+    mpr("Activating force_mores: " .. table.concat(activated, ", "))
+  end
+  if #deactivated > 0 and notify_fm then
+    mpr("Deactivating force_mores: " .. table.concat(deactivated, ", "))
+  end
+end
+
+local last_turn = nil
+function force_mores()
+  if last_turn ~= you.turns() then
+    update_force_mores()
+    last_turn = you.turns()
+  end
+end
+
+init_force_mores()
+
+-------------------------
+---- End force_mores ----
+-------------------------
+}
+
+{
+
+add_autopickup_func(function(it, name)
+
+  if name:find("throwing net") then return true end
+  
+  local class = it.class(true)
+  local armour_slots = {cloak="Cloak", helmet="Helmet", gloves="Gloves", boots="Boots", body="Armour", shield="Shield"}
+
+  if (class == "armour") then
+		if it.is_useless then return false end
+		
+    sub_type = it.subtype()
+    equipped_item = items.equipped_at(armour_slots[sub_type])
+ 
+    if (sub_type == "cloak") or (sub_type == "helmet") or (sub_type == "gloves") or (sub_type == "boots") then
+      if not equipped_item then
+        return true
+      else
+        return it.artefact or it.branded or it.ego
+      end
+    end
+ 
+    if (sub_type == "body") then
+      if equipped_item then
+        local armourname = equipped_item.name()
+        if equipped_item.artefact or equipped_item.branded or equipped_item.ego or (equipped_item.plus > 2) or armourname:find("dragon") or armourname:find("troll") then
+          return it.artefact
+        else
+          return it.artefact or it.branded or it.ego
+        end
+      end
+      return true
+    end
+ 
+    if (sub_type == "shield") then
+      if equipped_item then
+          return it.artefact or it.branded or it.ego
+      end
+    end
+  end
+end)
+
+}
+
+
+{
+  function ready()
+    -- Enable force_mores
+    force_mores()
+    char_defaults()
+  end
+}
+
+#############
+# Interface #
+#############
+
+autofight_throw = false
+autofight_throw_nomove = false
+
+show_travel_trail = true
+travel_delay = -1
+rest_delay = -1
+auto_sacrifice = true
+sacrifice_before_explore = true
+
+show_game_time = true
+
+warn_hatches = true
+jewellery_prompt = false
+equip_unequip = true
+allow_self_target = never
+confirm_butcher = never
+easy_eat_gourmand = true
+sort_menus = true : equipped, identified, basename, qualname, charged
+hp_warning = 50
+
+auto_hide_spells = true
+wall_jump_move = false
+
+##############
+# Autopickup #
+##############
+
+# autopickup = $?!:"/%}|\
+
+ae := autopickup_exceptions
+
+# autopickup artifacts
+ae += <artefact
+
+ae ^= <scroll.*immolation.
+ae ^= <scroll.*vulnerability.
+ae += >scroll of amnesia
+ae += >scroll of holy word
+
+ae ^= <potion.*lignification.
+
+ae += >wand of random effects
+# ae += >wand of paralysis
+# ae += >wand of lightning
+# ae += >wand of confusion
+# ae += >wand of digging
+# ae += >wand of disintegration
+# ae += >wand of polymorph
+# ae += >wand of flame
+# ae += >wand of enslavement
+
+ae += <phantom mirror
+
+ae += >ring of stealth
+ae += >ring of positive energy
+ae += >ring of fire
+ae += >ring of ice
+ae += >ring of magical power
+ae += >ring of strength
+ae += >ring of intelligence
+ae += >ring of dexterity
+ae += >ring of wizardry
+
+#########
+# Notes #
+#########
+
+dump_item_origins = all
+dump_message_count = 50
+dump_book_spells = false
+
+##########
+# Travel #
+##########
+
+explore_stop = items,greedy_items,greedy_pickup,greedy_pickup_gold
+explore_stop += greedy_visited_item_stack,stairs,shops,altars,gates
+explore_stop += greedy_sacrificeable
+auto_exclude += oklob,statue,roxanne,hyperactive
+
+stop := runrest_stop_message
+ignore := runrest_ignore_message
+
+# Annoyances
+: if you.god() == "Jiyva" then
+ignore += Jiyva gurgles merrily
+ignore += Jiyva appreciates your sacrifice
+ignore += Jiyva says: Divide and consume
+ignore += You hear.*splatter
+: end
+
+ignore ^= You feel.*sick
+ignore += disappears in a puff of smoke
+ignore += engulfed in a cloud of smoke
+ignore += standing in the rain
+ignore += engulfed in white fluffiness
+ignore += safely over a trap
+ignore += A.*toadstool withers and dies
+ignore += toadstools? grow
+ignore += You walk carefully through the
+ignore += chunks of flesh in your inventory.*rotted away
+runrest_ignore_poison  = 5:10
+runrest_ignore_monster += ^butterfly:1
+
+# Bad things
+stop += You fall through a shaft
+stop += An alarm trap emits a blaring wail
+stop += (blundered into a|invokes the power of) Zot
+stop += A huge blade swings out and slices into you!
+stop += flesh start
+stop += (starving|feel devoid of blood)
+stop += wrath finds you
+stop += lose consciousness
+stop += watched by something
+stop += appears from out of your range of vision
+
+# Expiring effects
+stop += You feel yourself slow down
+stop += less insulated
+stop += You are starting to lose your buoyancy
+stop += You lose control over your flight
+stop += Your hearing returns
+stop += Your transformation is almost over
+stop += back to life
+stop += uncertain
+stop += time is quickly running out
+stop += life is in your own hands
+stop += is no longer charmed
+stop += You start to feel a little slower
+stop += You are no longer
+
+: if you.race() == "Ghoul" then
+stop += smell.*(rott(ing|en)|decay)
+stop += something tasty in your inventory
+: end
+
+: if you.god() == "Xom" then
+stop += god:
+:else
+ignore += god:
+:end
+
+ignore += pray:
+ignore += talk:
+ignore += talk_visual:
+ignore += friend_spell:
+ignore += friend_enchant:
+ignore += friend_action:
+ignore += sound:
+
+###########
+# prompts #
+###########
+
+flash_screen_message += You feel strangely unstable
+flash_screen_message += Strange energies course through your body
+
+more := force_more_message 
+
+# distortion
+more += Space warps horribly around you
+more += hits you.*distortion
+more += Space bends around you\.
+more += Your surroundings suddenly seem different.
+more += Its appearance distorts for a moment.
+
+# ghost moths/antimagic
+more += watched by something
+more += You feel your power leaking
+
+# torment/holy wrath
+more += You convulse
+
+# dispel breath
+more += dispelling energy hits you
+
+# early unseen horrors
+more += It hits you!
+more += Something hits you
+more += Something. *misses you.
+
+
+# more += You have reached level
+more += You fall through a shaft
+
+# abyss convenience prompts
+more += Found an abyssal rune
+more += Found a gateway leading out of the Abyss
+more += Found a gateway leading deeper into the Abyss
+
+# necromutation
+more += Your transformation is almost over.
+more += You feel yourself coming back to life
+
+# summon greater demon
+more += is no longer charmed
+
+# Announcements of timed portal vaults:
+more += interdimensional caravan
+more += distant snort
+more += roar of battle
+more += wave of frost
+more += hiss of flowing sand
+more += sound of rushing water
+more += oppressive heat about you
+more += crackle of arcane power
+more += Found a gateway leading out of the Abyss
+more += Found .* abyssal rune of Zot
+more += You feel a terrible weight on your shoulders
+more += .* resides here
+
+# Interrupts
+more += You don't.* that spell
+more += You miscast (Controlled Blink|Blink|Death's|Borg|Necromutation)
+more += You can't (read|drink|do) that
+more += That item cannot be evoked
+more += This wand has no charges
+more += You are held in a net
+more += You have disarmed
+more += You don't have any such object
+more += do not work when you're silenced
+more += You can't unwield
+more += enough magic points
+more += You feel your control is inadequate
+more += Something interferes with your magic
+more += You enter a teleport trap
+
+# Bad things
+more += Your surroundings flicker
+more += You cannot teleport right now
+more += The writing blurs in front of your eyes
+more += You fall through a shaft
+more += A huge blade swings out and slices into you!
+more += (blundered into a|invokes the power of) Zot
+more += Ouch! That really hurt!
+more += dispelling energy hits you
+more += You convulse
+more += You are (blasted|electrocuted)
+more += You are.*confused
+more += flesh start
+more += (starving|devoid of blood)
+more += god:(sends|finds|silent|anger)
+more += You feel a surge of divine spite
+more += lose consciousness
+more += You are too injured to fight blindly
+more += calcifying dust hits
+more += Space warps horribly around you
+more += hits you.*distortion
+more += Space bends around you\.
+more += watched by something
+more += A sentinel's mark forms upon you
+more += Your limbs have turned to stone
+more += You are slowing down
+more += .*LOW HITPOINT WARNING.*
+more += warns you.*of distortion
+more += lethally poison
+more += space bends around your
+more += wielding.*of (distortion|chaos)
+
+# Gods
+more += you are ready to make a new sacrifice
+more += mollified
+more += wrath finds you
+more += sends forces
+more += sends monsters
+more += Vehumet offers
+
+# Hell effects
+# Re-enabled
+more += "You will not leave this place."
+more += "Die, mortal!"
+more += "We do not forgive those who trespass against us!"
+more += "Trespassers are not welcome here!"
+more += "You do not belong in this place!"
+more += "Leave now, before it is too late!"
+more += "We have you now!"
+more += You smell brimstone.
+more += Brimstone rains from above.
+more += You feel lost and a long, long way from home...
+more += You shiver with fear.
+more += You feel a terrible foreboding...
+more += Something frightening happens.   
+more += You sense an ancient evil watching you...
+more += You suddenly feel all small and vulnerable.
+more += You sense a hostile presence.
+more += A gut-wrenching scream fills the air!
+more += You hear words spoken in a strange and terrible language...
+more += You hear diabolical laughter!
+
+# Expiring effects
+more += You feel yourself slow down
+more += less insulated
+more += You are starting to lose your buoyancy
+more += You lose control over your flight
+more += Your hearing returns
+more += Your transformation is almost over
+more += You have a feeling this form
+more += You feel yourself come back to life
+more += uncertain
+more += time is quickly running out
+more += life is in your own hands
+more += is no longer charmed
+more += shroud falls apart
+more += You start to feel a little slower
+more += You flicker
+more += You feel less protected from missiles
+
+# Skill breakpoints
+more += skill increases
+
+# Others
+# more += You have reached level
+more += You have finished your manual of
+more += Your scales start
+more += You feel monstrous
+more += zaps a wand
+more += is unaffected
+more += Jiyva alters your body
+
+# Any uniques and any pan lords - doesn't seem to work
+more += (?-i:[A-Z]).* comes? into view
+
+more += Agnes.*comes? into view.
+more += Aizul.*comes? into view.
+more += Antaeus.*comes? into view.
+more += Arachne.*comes? into view.
+more += Asmodeus.*comes? into view.
+more += Asterion.*comes? into view.
+more += Azrael.*comes? into view.
+more += Blork the orc.*comes? into view.
+more += Boris.*comes? into view.
+more += Cerebov.*comes? into view.
+more += Crazy Yiuf.*comes? into view.
+more += Dispater.*comes? into view.
+more += Dissolution.*comes? into view.
+more += Donald.*comes? into view.
+more += Dowan.*comes? into view.
+more += Duvessa.*comes? into view.
+more += Edmund.*comes? into view.
+more += Enchantress.*comes? into view.
+more += Ereshkigal.*comes? into view.
+more += Erica.*comes? into view.
+more += Erolcha.*comes? into view.
+more += Eustachio.*comes? into view.
+more += Fannar.*comes? into view.
+more += Frances.*comes? into view.
+more += Francis.*comes? into view.
+more += Frederick.*comes? into view.
+more += Gastronok.*comes? into view.
+more += Geryon.*comes? into view.
+more += Gloorx Vloq.*comes? into view.
+more += Grinder.*comes? into view.
+more += Grum.*comes? into view.
+more += Harold.*comes? into view.
+more += Ignacio.*comes? into view.
+more += Ijyb.*comes? into view.
+more += Ilsuiw.*comes? into view.
+more += Jorgrun.*comes? into view.
+more += Jory.*comes? into view.
+more += Jessica.*comes? into view.
+more += Joseph.*comes? into view.
+more += Josephine.*comes? into view.
+more += Jozef.*comes? into view.
+more += Khufu.*comes? into view.
+more += Kirke.*comes? into view.
+more += Lamia.*comes? into view.
+more += Lom Lobon.*comes? into view.
+more += Louise.*comes? into view.
+more += Mara.*comes? into view.
+more += Margery.*comes? into view.
+more += Maud.*comes? into view.
+more += Maurice.*comes? into view.
+more += Menkaure.*comes? into view.
+more += Mennas.*comes? into view.
+more += Mnoleg.*comes? into view.
+more += Murray.*comes? into view.
+more += Natasha.*comes? into view.
+more += Nergalle.*comes? into view.
+more += Nessos.*comes? into view.
+more += Nikola.*comes? into view.
+more += Norris.*comes? into view.
+more += Pikel.*comes? into view.
+more += Polyphemus.*comes? into view.
+more += Prince Ribbit.*comes? into view.
+more += Psyche.*comes? into view.
+more += Purgy.*comes? into view.
+more += Robin.*comes? into view.
+more += Roxanne.*comes? into view.
+more += Rupert.*comes? into view.
+more += Saint Roka.*comes? into view.
+more += Sigmund.*comes? into view.
+more += Snorg.*comes? into view.
+more += Sojobo.*comes? into view.
+more += Sonja.*comes? into view.
+more += Terence.*comes? into view.
+more += The Lernaean hydra.*comes? into view.
+more += The royal jelly.*comes? into view.
+more += The Serpent of Hell.*comes? into view.
+more += Tiamat.*comes? into view.
+more += Urug.*comes? into view.
+more += Vashnia.*comes? into view.
+more += Wiglaf.*comes? into view.
+more += Xtahua.*comes? into view.
+
+more += 27-headed.*comes? into view.
+more += .*player ghost.* comes? into view
+more += .*Ancient Lich.*comes? into view.
+more += .*Orbs? of Fire.*comes? into view.
+more += .*Fiend.*comes? into view.
+more += .*Hellion.*comes? into view.
+more += .*Tormentor.*comes? into view.
+more += .*Hell Sentinel.*comes? into view.
+more += .*Executioner.*comes? into view.
+more += .*Neqoxec.*comes? into view.
+more += .*Cacodemon.*comes? into view.
+more += .*Shining Eye.*comes? into view.
+more += .*Greater Mummy.*comes? into view.
+more += .*Mummy Priest.*comes? into view.
+more += .*Curse Toe.*comes? into view.
+more += .*Curse Skull.*comes? into view.
+more += .*('s|s') ghost.*comes? into view.
+more += .*shrike.*comes? into view.
+more += .*wretched star.*comes? into view
+more += .*lurking horror.*comes? into view
+more += .*Juggernaut.*comes? into view.
+more += .*Iron Giant.*comes? into view.
+more += .*Tzitzimimeh.*comes? into view.
+more += .*Tzitzimitl.*comes? into view.
+
+# Paralysis enemies
+more += .*Giant Eyeball.*comes? into view.
+more += .*Lich.*comes? into view.
+more += .*Ogre Mage.*comes? into view.
+more += .*a Wizard.*comes? into view.
+more += .*orc sorcerer.*comes? into view.
+more += .*sphinx.*comes? into view.
+more += .*Great orb of eyes.*comes? into view.
+more += .*Vampire knight.*comes? into view.
+
+# Other dangerous enemies
+more += minotaur.*into view
+more += *guardian serpent.*comes? into view.
+more += .*vault sentinel.*comes? into view.
+more += .*vault warden.*comes? into view.
+more += .*ironbrand convoker.*comes? into view.
+
+# Dancing weapon
+more += Your.*falls from the air.
+
+# Xom is scary
+: if you.god() == "Xom" then
+more += god:
+: end
+
+####################
+# Autoinscriptions #
+####################
+
+ai := autoinscribe
+
+ai += (vampiric):!w
+ai += (bad|dangerous)_item.*potion:!q
+ai += (bad|dangerous)_item.*scroll:!r
+ai += of faith:!P
+ai += rod of:!a
+ai += lightning rod:!a
+ai += [^r]staff of (conj|energy|power|wizardry):!a
+ai += manual of:!d
+ai += dispersal:!f
+ai += tome of Destruction:!d
+ai += throwing net:!f
+ai += curare:!f
+ai += needle of (frenzy|paralysis|sleeping|confusion):!f
+ai += ration.:!d
+
+: if you.god() ~= "Lugonu" then
+ai += (distortion):!w
+:end
+
+ai += of identify:@r1
+ai += remove curse:@r2
+ai += curing:@q1
+ai += potions? of heal wounds:@q2
+ai += wand of heal wounds:@v2
+ai += wand of hasting:@v3
+ai += potions? of haste:@q3
+ai += scrolls? of teleportation:@r4
+ai += wand of teleportation:@v4
+ai += potions? of blood:@q0
+
+####################
+# Mute some messages #
+####################
+
+msc := message_colour
+
+# Muted - unnecessary
+msc += mute:The (bush|fungus|plant) is engulfed
+msc += mute:The (bush|fungus|plant) is struck by lightning
+msc += mute:Cast which spell
+msc += mute:Use which ability
+msc += mute:Evoke which item
+msc += mute:Confirm with
+# msc += mute:(Casting|Aiming|Aim|Zapping)\:
+msc += mute:Throwing.*\:
+msc += mute:You can\'t see any susceptible monsters within range
+msc += mute:Press\: \? \- help, Shift\-Dir \- straight line, f \- you
+msc += mute:for a list of commands and other information
+msc += mute:Firing \(i
+msc += mute:Fire\/throw which item\?
+msc += mute:You swap places
+
+msc ^= mute:is lightly (damaged|wounded)
+msc ^= mute:is moderately (damaged|wounded)
+msc ^= mute:is heavily (damaged|wounded)
+msc ^= mute:is severely (damaged|wounded)
+msc ^= mute:is almost (dead|destroyed)
+
+msc += mute:Was it this warm in here before
+msc += mute:The flames dance
+msc += mute:Your shadow attacks
+msc += mute:Marking area around
+msc += mute:Placed new exclusion
+msc += mute:Reduced exclusion size to a single square
+msc += mute:Removed exclusion
+msc += mute:You can access your shopping list by pressing
+msc += mute:for starvation awaits
+msc += mute:As you enter the labyrinth
+msc += mute:previously moving walls settle noisily into place
+msc += mute:You offer a prayer to Elyvilon
+msc += mute:You offer a prayer to Nemelex Xobeh
+msc += mute:You offer a prayer to Okawaru
+msc += mute:You offer a prayer to Makhleb
+msc += mute:You offer a prayer to Lugonu
+msc += mute:Lugonu accepts your kill
+msc += mute:Okawaru is noncommittal
+msc += mute:Nemelex Xobeh is (noncommittal|pleased)
+msc += mute:The plant looks sick
+msc += mute:You start butchering
+msc += mute:You continue butchering
+msc += mute:This raw flesh tastes terrible
+
+: if string.find(you.god(), "Jiyva") then
+  msc += mute:You hear a.*slurping noise
+  msc += mute:You hear a.*squelching noise
+  msc += mute:You feel a little less hungry
+: end
+
+###############
+# Spell slots #
+###############
+
+spell_slot += Animate Skeleton:u
+spell_slot += Animate Dead:u
+spell_slot += Apportation:c
+spell_slot += Beastly Appendage:a
+spell_slot += Blink:b
+spell_slot += Bolt of Cold:c
+spell_slot += Bolt of Fire:c
+spell_slot += Borgnjor's Vile Clutch:f
+spell_slot += Call Canine Familiar:c
+spell_slot += Call Imp:x
+spell_slot += Cause Fear:f
+spell_slot += Confuse:c
+spell_slot += Confusing Touch:a
+spell_slot += Conjure Flame:d
+spell_slot += Corona:a
+spell_slot += Corpse Rot:d
+spell_slot += Dazzling Spray:s
+spell_slot += Deflect Missiles:r
+spell_slot += Dispel Undead:d
+spell_slot += Ensorcelled Hibernation:x
+spell_slot += Fireball:x
+spell_slot += Flame Tongue:a
+spell_slot += Freeze:a
+spell_slot += Freezing Cloud:d
+spell_slot += Fulminant Prism:z
+# spell_slot += Haste:s
+spell_slot += Ice Form:c
+spell_slot += Infusion:a
+spell_slot += Iskenderun's Battlesphere:i
+spell_slot += Iskenderun's Mystic Blast:x
+spell_slot += Magic Dart:a
+spell_slot += Mephitic Cloud:f
+spell_slot += Olgreb's Toxic Radiance:y
+spell_slot += Orb of Destruction:zZ
+spell_slot += Pain:a
+spell_slot += Passage of Golubria:v
+spell_slot += Passwall:qQ
+# spell_slot += Phase Shift:aA
+spell_slot += Poisonous Vapours:x
+spell_slot += Portal Projectile:d
+spell_slot += Regeneration:e
+# spell_slot += Repel Missiles:r
+spell_slot += Sandblast:a
+spell_slot += Searing Ray:s
+spell_slot += Shock:a
+spell_slot += Shroud of Golubria:q
+spell_slot += Silence:g
+spell_slot += Slow:s
+spell_slot += Song of Slaying:w
+spell_slot += Spectral Weapon:t
+spell_slot += Spider Form:x
+spell_slot += Static Discharge:d
+spell_slot += Sticks to Snakes:s
+spell_slot += Sticky Flame:q
+spell_slot += Sting:a
+spell_slot += Stone Arrow:x
+spell_slot += Sublimation of Blood:Z
+spell_slot += Summon Butterflies:n
+spell_slot += Summon Ice Beast:d
+spell_slot += Summon Lightning Spire:z
+spell_slot += Summon Mana Viper:w
+spell_slot += Summon Small Mammal:a
+spell_slot += Swiftness:s
+spell_slot += Throw Flame:x
+spell_slot += Throw Frost:x
+spell_slot += Throw Icicle:c
+spell_slot += Tukima's Dance:d
+spell_slot += Vampiric Draining:q
+
+
+###############
+# Item slots #
+###############
+
+# item_slot += wand of teleportation:g
+# item_slot += wand of hasting:s
+# item_slot += wand of heal wounds:e
+item_slot += wand of digging:v
+item_slot += wand of disintegration:c
+# item_slot += wand of confusion:y
+item_slot += wand of paralysis:u
+item_slot += wand of iceblast:d
+item_slot += wand of acid:x
+# item_slot += wand of lightning:f
+item_slot += wand of flame:t
+
+item_slot += ring of see invisible:z
+item_slot += ring of protection from magic:l
+item_slot += ring of protection from fire:i
+item_slot += ring of protection from cold:o
+
+item_slot += ration:e
+item_slot += potion of blood:q
+item_slot += poison needle: Q
+
+#################
+# Ability slots #
+#################
+ability_slot += corrupt:Y
+
+
+#REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE 
+#REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+#MY MACORONS
+bindkey += [q] CMD_MOVE_UP_LEFT
+bindkey += [w] CMD_MOVE_UP
+bindkey += [e] CMD_MOVE_UP_RIGHT
+bindkey += [a] CMD_MOVE_LEFT
+bindkey += [d] CMD_MOVE_RIGHT
+bindkey += [s] CMD_MOVE_DOWN
+bindkey += [z] CMD_MOVE_DOWN_LEFT
+bindkey += [c] CMD_MOVE_DOWN_RIGHT
+
+bindkey += [Q] CMD_RUN_UP_LEFT
+bindkey += [W] CMD_RUN_UP
+bindkey += [E] CMD_RUN_UP_RIGHT
+bindkey += [A] CMD_RUN_LEFT
+bindkey += [D] CMD_RUN_RIGHT
+bindkey += [S] CMD_RUN_DOWN
+bindkey += [Z] CMD_RUN_DOWN_LEFT
+bindkey += [C] CMD_RUN_DOWN_RIGHT
+
+bindkey += [^Q] CMD_ATTACK_UP_LEFT
+bindkey += [^W] CMD_ATTACK_UP
+//bindkey += [^E] CMD_ATTACK_UP_RIGHT
+bindkey += [^A] CMD_ATTACK_LEFT
+bindkey += [^D] CMD_ATTACK_RIGHT
+bindkey += [^S] CMD_ATTACK_DOWN
+bindkey += [^Z] CMD_ATTACK_DOWN_LEFT
+bindkey += [^C] CMD_ATTACK_DOWN_RIGHT
+
+bindkey += [K] CMD_CLOSE_DOOR
+bindkey += [r] CMD_USE_ABILITY
+bindkey += [R] CMD_DISPLAY_MUTATIONS
+bindkey += [v] CMD_CAST_SPELL
+bindkey += [V] CMD_FORCE_CAST_SPELL
+
+bindkey += [n] CMD_EVOKE_WIELDED
+bindkey += [N] CMD_EVOKE
+bindkey += [b] CMD_BUTCHER
+bindkey += [u] CMD_WIELD_WEAPON
+bindkey += [U] CMD_WEAR_ARMOUR
+bindkey += [j] CMD_DROP
+bindkey += [h] CMD_EAT
+bindkey += [y] CMD_READ
+bindkey += [t] CMD_QUAFF
+bindkey += [T] CMD_QUIVER_ITEM
+bindkey += [k] CMD_SHOUT
+
+bindkey += [^S] CMD_SAVE_GAME
+
+bindkey += [q] CMD_TARGET_UP_LEFT
+bindkey += [w] CMD_TARGET_UP
+bindkey += [e] CMD_TARGET_UP_RIGHT
+bindkey += [a] CMD_TARGET_LEFT
+bindkey += [d] CMD_TARGET_RIGHT
+bindkey += [s] CMD_TARGET_DOWN
+bindkey += [z] CMD_TARGET_DOWN_LEFT
+bindkey += [c] CMD_TARGET_DOWN_RIGHT
+
+bindkey += [Q] CMD_TARGET_DIR_UP_LEFT
+bindkey += [W] CMD_TARGET_DIR_UP
+bindkey += [E] CMD_TARGET_DIR_UP_RIGHT
+bindkey += [A] CMD_TARGET_DIR_LEFT
+bindkey += [D] CMD_TARGET_DIR_RIGHT
+bindkey += [S] CMD_TARGET_DIR_DOWN
+bindkey += [Z] CMD_TARGET_DIR_DOWN_LEFT
+bindkey += [C] CMD_TARGET_DIR_DOWN_RIGHT
+
+bindkey += [q] CMD_MAP_MOVE_UP_LEFT
+bindkey += [w] CMD_MAP_MOVE_UP
+bindkey += [e] CMD_MAP_MOVE_UP_RIGHT
+bindkey += [a] CMD_MAP_MOVE_LEFT
+bindkey += [d] CMD_MAP_MOVE_RIGHT
+bindkey += [s] CMD_MAP_MOVE_DOWN
+bindkey += [z] CMD_MAP_MOVE_DOWN_LEFT
+bindkey += [c] CMD_MAP_MOVE_DOWN_RIGHT
+
+bindkey += [Q] CMD_MAP_JUMP_UP_LEFT
+bindkey += [W] CMD_MAP_JUMP_UP
+bindkey += [E] CMD_MAP_JUMP_UP_RIGHT
+bindkey += [A] CMD_MAP_JUMP_LEFT
+bindkey += [D] CMD_MAP_JUMP_RIGHT
+bindkey += [S] CMD_MAP_JUMP_DOWN
+bindkey += [Z] CMD_MAP_JUMP_DOWN_LEFT
+bindkey += [C] CMD_MAP_JUMP_DOWN_RIGHT
+
+bindkey += [^U] CMD_TOGGLE_AUTOPICKUP
+bindkey += [x] CMD_MAP_EXCLUDE_AREA
+
+bindkey += [l] CMD_AUTOFIGHT
+
+
+
+
+{
+
+function load_my_rc()
+    crawl.mpr("loading...")
+    dofile("my.lua")
+    crawl.mpr("loaded")
+end
+}
+#bindkey += [p] ===load_my_rc
