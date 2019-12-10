@@ -1,7 +1,5 @@
 crawl.mpr("hello i am my.rc")
-function print_a()
-    crawl.mpr("hello i am my.rc")
-end
+
 mk = 1
 _path = nil
 _seqForward = nil
@@ -12,8 +10,9 @@ _better = false
 _xoff = 0
 _yoff = 0
 
-function doPillarAbove()
-    doPillar(0, -1)
+function inputPillar()
+    local x, y = crawl.get_target()
+    doPillar(x, y)
 end
 
 function doPillar(x, y)
@@ -22,7 +21,7 @@ function doPillar(x, y)
     doStart()
 end
 
-function doStart()
+function dancePillar()
     if _path == nil then
         crawl.mpr("No search selected!")
         return
@@ -48,6 +47,7 @@ function doStart()
     _seqBackward = getSeqBackwards(path)
     _seqidx = idx
 end
+
 do
     local toOff
     function getOffset(cmd)
@@ -371,7 +371,7 @@ function doSearch(x, y)
     return path
 end
 
-function getSeq(path) 
+function getSeq(path)
     local seq = {}
     for i, s in ipairs(path) do
         local t = path[(i + 1)]
@@ -385,7 +385,7 @@ function getSeq(path)
             n = "CMD_MOVE_DOWN"
         elseif t[1]==s[1] and t[2]==s[2]-1 then
             n = "CMD_MOVE_UP"
-        elseif t[1]==s[1]+1 and t[2]==s[2] then 
+        elseif t[1]==s[1]+1 and t[2]==s[2] then
             n = "CMD_MOVE_RIGHT"
         elseif t[1]==s[1]-1 and t[2]==s[2] then
             n = "CMD_MOVE_LEFT"
@@ -454,7 +454,6 @@ function create(x, y)
     end
     return pillar
 end
-crawl.mpr("i create")
 
 function showTiles(tiles)
     for xy, _ in pairs(tiles) do
@@ -655,7 +654,7 @@ function getNeighboring(tileset, x, y)
     return neighbors
 end
 
-function getMinTile(nodes, dist) 
+function getMinTile(nodes, dist)
     local m = 100000
     local t = nil
     for _, x, y, __ in mk.tuples(nodes) do
