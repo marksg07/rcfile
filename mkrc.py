@@ -1,5 +1,6 @@
-#!/usr/bin/python
+#!python
 import os
+from shutil import copyfile
 
 with open('crawl.rc') as f1:
     with open('pillardance/pillardance.lua') as f2:
@@ -9,4 +10,4 @@ with open('crawl.rc') as f1:
             f3.write(f2.read())
             f3.write('\n}\n')
 
-os.system('cp out.rc ~/.crawlrc')
+copyfile('out.rc', os.environ['HOME'] + '/.crawlrc')

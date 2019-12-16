@@ -1116,3 +1116,4 @@ bindkey += [l] CMD_AUTOFIGHT
 macros += M P ===inputPillar
 macros += M O ===dancePillar
 macros += M p ===doStep
+macros += M L ===invertAuto
