@@ -1113,7 +1113,7 @@ bindkey += [^U] CMD_TOGGLE_AUTOPICKUP
 bindkey += [x] CMD_MAP_EXCLUDE_AREA
 
 bindkey += [l] CMD_AUTOFIGHT
-macros += M P ===inputPillar
+macros += M P ===inputTogglePillar
 macros += M O ===dancePillar
 macros += M p ===doStep
 macros += M L ===invertAuto
